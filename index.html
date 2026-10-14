@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شبیه‌ساز سه‌بعدی موتور ۱۶ سیلندر | W16 / V16 3D Engine Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {
+            font-family: 'Vazirmatn', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #161b26 0%, #090b10 100%);
+            color: #f1f5f9;
+        }
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+        .glass-panel {
+            background: rgba(13, 18, 28, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.4);
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.4);
+            border-radius: 9999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(56, 189, 248, 0.8);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(51, 65, 85, 0.8);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #38bdf8;
+            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #7dd3fc;
+        }
+        .explode-slider::-webkit-slider-runnable-track {
+            height: 8px;
+            background: linear-gradient(90deg, #0ea5e9 0%, #f59e0b 50%, #ef4444 100%);
+        }
+        .explode-slider::-webkit-slider-thumb {
+            width: 22px;
+            height: 22px;
+            background: #ffffff;
+            border: 3px solid #0ea5e9;
+            margin-top: -7px;
+            box-shadow: 0 0 16px rgba(14, 165, 233, 0.9);
+        }
+        .part-btn.active {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.28), rgba(59, 130, 246, 0.15));
+            border-color: #38bdf8;
+            box-shadow: inset 0 0 12px rgba(56, 189, 248, 0.25);
+        }
+        .swatch-btn {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .swatch-btn:hover, .swatch-btn.active {
+            transform: scale(1.15);
+            box-shadow: 0 0 0 2px #fff, 0 0 12px currentColor;
+        }
+        #part-tooltip {
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden select-none">
+
+    <!-- 3D Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- Floating 3D Hover Tooltip -->
+    <div id="part-tooltip" class="fixed z-50 opacity-0 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-sky-400/50 text-xs font-bold text-sky-300 shadow-lg backdrop-blur-md">
+        قطعه
+    </div>
+
+    <!-- Top Header & Live Telemetry Bar -->
+    <header class="fixed top-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+        <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3 pointer-events-auto">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-700 flex items-center justify-center shadow-lg shadow-sky-500/30">
+                <svg class="w-6 h-6 text-white animate-spin" style="animation-duration: 8s;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-sm md:text-base font-black tracking-tight text-white flex items-center gap-2">
+                    آزمایشگاه سه‌بعدی موتور ۱۶ سیلندر
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 font-semibold">W16 / V16 QUAD-TURBO</span>
+                </h1>
+                <p class="text-[11px] text-slate-400">برای چرخش کلیک و درگ کنید • روی هر قطعه کلیک کنید تا مشخصات و شخصی‌سازی آن باز شود</p>
+            </div>
+        </div>
+
+        <!-- Telemetry Readouts -->
+        <div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-4 md:gap-6 pointer-events-auto">
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400">دور موتور (RPM)</div>
+                <div id="tel-rpm" class="text-sm md:text-base font-black text-sky-400 font-mono">2400</div>
+            </div>
+            <div class="h-7 w-px bg-slate-700/70"></div>
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400">قدرت خروجی</div>
+                <div id="tel-hp" class="text-sm md:text-base font-black text-emerald-400 font-mono">680 HP</div>
+            </div>
+            <div class="h-7 w-px bg-slate-700/70"></div>
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400">سرعت پیستون</div>
+                <div id="tel-piston" class="text-sm md:text-base font-black text-amber-400 font-mono">7.6 m/s</div>
+            </div>
+            <div class="h-7 w-px bg-slate-700/70 hidden sm:block"></div>
+            <div class="text-center hidden sm:block">
+                <div class="text-[10px] text-slate-400">دمای اگزوز</div>
+                <div id="tel-temp" class="text-sm md:text-base font-black text-rose-400 font-mono">540 °C</div>
+            </div>
+            <div class="h-7 w-px bg-slate-700/70 hidden md:block"></div>
+            <div class="hidden md:flex items-center gap-1.5">
+                <button onclick="setCameraPreset('iso')" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-sky-500/20 border border-slate-700 hover:border-sky-400 text-[11px] text-slate-200 transition">نمای ایزومتریک</button>
+                <button onclick="setCameraPreset('front')" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-sky-500/20 border border-slate-700 hover:border-sky-400 text-[11px] text-slate-200 transition">روبه‌رو</button>
+                <button onclick="setCameraPreset('top')" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-sky-500/20 border border-slate-700 hover:border-sky-400 text-[11px] text-slate-200 transition">بالا</button>
+                <button onclick="setCameraPreset('side')" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-sky-500/20 border border-slate-700 hover:border-sky-400 text-[11px] text-slate-200 transition">نیم‌رخ</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Right Sidebar: Parts Explorer & Global Engine Controls -->
+    <aside class="fixed top-20 right-3 bottom-24 w-80 max-w-[88vw] z-20 flex flex-col gap-3 pointer-events-none">
+        <div class="glass-panel rounded-2xl p-3.5 flex flex-col gap-3 max-h-full overflow-y-auto custom-scroll pointer-events-auto">
+            
+            <!-- Tabs -->
+            <div class="grid grid-cols-2 gap-1 p-1 bg-slate-900/90 rounded-xl border border-slate-800">
+                <button id="tab-parts-btn" onclick="switchRightTab('parts')" class="py-1.5 text-xs font-bold rounded-lg bg-sky-500 text-slate-950 shadow transition">
+                    قطعات موتور (۱۰ بخش)
+                </button>
+                <button id="tab-sim-btn" onclick="switchRightTab('sim')" class="py-1.5 text-xs font-bold rounded-lg text-slate-300 hover:text-white transition">
+                    تنظیمات فنی و عملکرد
+                </button>
+            </div>
+
+            <!-- Parts List Tab -->
+            <div id="tab-parts-content" class="flex flex-col gap-2">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 px-1">
+                    <span>انتخاب قطعه برای بررسی و شخصی‌سازی:</span>
+                    <button onclick="resetAllPartsVisibility()" class="text-sky-400 hover:underline">نمایش همه</button>
+                </div>
+                <div id="parts-list-container" class="flex flex-col gap-1.5"></div>
+            </div>
+
+            <!-- Engine Simulation Settings Tab -->
+            <div id="tab-sim-content" class="hidden flex-col gap-3.5">
+                <!-- RPM Control -->
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="text-xs font-bold text-slate-200">سرعت چرخش موتور (RPM)</label>
+                        <span id="rpm-val-label" class="text-xs font-mono font-bold text-sky-400">2400 RPM</span>
+                    </div>
+                    <input id="rpm-slider" type="range" min="0" max="8500" step="50" value="2400" class="w-full">
+                    <div class="flex gap-1.5 mt-2.5">
+                        <button onclick="setRPM(0)" class="flex-1 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[11px] font-bold hover:bg-rose-500/30 transition">توقف</button>
+                        <button onclick="setRPM(120)" class="flex-1 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-bold hover:bg-amber-500/30 transition">اسلوموشن</button>
+                        <button onclick="setRPM(2400)" class="flex-1 py-1 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-300 text-[11px] font-bold hover:bg-sky-500/30 transition">عادی</button>
+                        <button onclick="setRPM(8000)" class="flex-1 py-1 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[11px] font-bold hover:bg-purple-500/30 transition">ردلاین</button>
+                    </div>
+                </div>
+
+                <!-- Geometry Customization -->
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-3">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-slate-200">زاویه بانک سیلندرها (V-Angle)</label>
+                            <span id="angle-val-label" class="text-xs font-mono text-amber-400">65°</span>
+                        </div>
+                        <input id="bank-angle-slider" type="range" min="45" max="90" step="1" value="65" class="w-full">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-slate-200">ضریب کورس پیستون (Stroke)</label>
+                            <span id="stroke-val-label" class="text-xs font-mono text-emerald-400">100%</span>
+                        </div>
+                        <input id="stroke-slider" type="range" min="65" max="135" step="1" value="100" class="w-full">
+                    </div>
+                </div>
+
+                <!-- Visual Modes -->
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-2">
+                    <div class="text-xs font-bold text-slate-200 mb-1">حالت‌های نمایشی و جلوه‌های ویژه</div>
+                    
+                    <label class="flex items-center justify-between cursor-pointer py-1">
+                        <span class="text-xs text-slate-300">نمایش جرقه و احتراق داخل سیلندر</span>
+                        <input id="toggle-combustion" type="checkbox" checked class="w-4 h-4 accent-sky-500 rounded">
+                    </label>
+
+                    <label class="flex items-center justify-between cursor-pointer py-1">
+                        <span class="text-xs text-slate-300">بلوک سیلندر شیشه‌ای (X-Ray Block)</span>
+                        <input id="toggle-xray" type="checkbox" class="w-4 h-4 accent-sky-500 rounded">
+                    </label>
+
+                    <label class="flex items-center justify-between cursor-pointer py-1">
+                        <span class="text-xs text-slate-300">التهاب حرارتی منیفولد اگزوز</span>
+                        <input id="toggle-thermal" type="checkbox" checked class="w-4 h-4 accent-sky-500 rounded">
+                    </label>
+
+                    <label class="flex items-center justify-between cursor-pointer py-1">
+                        <span class="text-xs text-slate-300">چرخش خودکار دوربین</span>
+                        <input id="toggle-autorotate" type="checkbox" class="w-4 h-4 accent-sky-500 rounded">
+                    </label>
+                </div>
+
+                <!-- Live 16-Cylinder Firing Order Matrix -->
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-200">ماتریس زنده احتراق ۱۶ سیلندر</span>
+                        <span class="text-[10px] text-slate-400">۴ زمانه</span>
+                    </div>
+                    <div id="firing-grid" class="grid grid-cols-8 gap-1 text-center"></div>
+                    <div class="flex justify-between text-[10px] text-slate-400 mt-2 pt-1.5 border-t border-slate-800">
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>مکش</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>تراکم</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span>انفجار</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-500"></span>تخلیه</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- Left Sidebar: Selected Part Customization & Technical Encyclopedia -->
+    <aside class="fixed top-20 left-3 bottom-24 w-80 md:w-96 max-w-[88vw] z-20 flex flex-col gap-3 pointer-events-none">
+        <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3.5 max-h-full overflow-y-auto custom-scroll pointer-events-auto">
+            
+            <!-- Selected Part Header -->
+            <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span id="detail-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/30">بخش ۱ از ۱۰</span>
+                        <span id="detail-en-name" class="text-[11px] font-mono text-slate-400">Crankshaft & Flywheel</span>
+                    </div>
+                    <h2 id="detail-fa-name" class="text-base md:text-lg font-black text-white mt-1">میل‌لنگ فورج‌شده و فلایویل</h2>
+                </div>
+                <button onclick="focusSelectedPart()" title="تمرکز دوربین روی این قطعه" class="p-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 transition shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Customization Studio for Selected Part -->
+            <div class="bg-slate-900/75 p-3 rounded-xl border border-slate-800 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                        </svg>
+                        شخصی‌سازی ظاهری و فیزیکی این قطعه
+                    </span>
+                    <button onclick="resetSelectedPartStyle()" class="text-[11px] text-slate-400 hover:text-white underline">بازنشانی قطعه</button>
+                </div>
+
+                <!-- Color Swatches & Picker -->
+                <div>
+                    <div class="text-[11px] text-slate-400 mb-1.5">رنگ و پوشش قطعه:</div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="setPartColor('#d4d8dd')" class="swatch-btn w-6 h-6 rounded-full bg-[#d4d8dd]" title="تیتانیوم نقره‌ای"></button>
+                        <button onclick="setPartColor('#ef4444')" class="swatch-btn w-6 h-6 rounded-full bg-[#ef4444]" title="قرمز آنودایز مسابقه‌ای"></button>
+                        <button onclick="setPartColor('#0ea5e9')" class="swatch-btn w-6 h-6 rounded-full bg-[#0ea5e9]" title="آبی بوگاتی"></button>
+                        <button onclick="setPartColor('#f59e0b')" class="swatch-btn w-6 h-6 rounded-full bg-[#f59e0b]" title="طلایی فورج"></button>
+                        <button onclick="setPartColor('#10b981')" class="swatch-btn w-6 h-6 rounded-full bg-[#10b981]" title="سبز زمردی"></button>
+                        <button onclick="setPartColor('#a855f7')" class="swatch-btn w-6 h-6 rounded-full bg-[#a855f7]" title="بنفش تیتانیوم حرارتی"></button>
+                        <button onclick="setPartColor('#cd7f32')" class="swatch-btn w-6 h-6 rounded-full bg-[#cd7f32]" title="برنز صنعتی"></button>
+                        <button onclick="setPartColor('#1e293b')" class="swatch-btn w-6 h-6 rounded-full bg-[#1e293b] border border-slate-600" title="کربن مات"></button>
+                        <input id="custom-color-input" type="color" value="#d4d8dd" onchange="setPartColor(this.value)" class="w-7 h-7 rounded cursor-pointer bg-transparent border-0" title="انتخاب رنگ دلخواه">
+                    </div>
+                </div>
+
+                <!-- Material Finish Preset -->
+                <div>
+                    <div class="text-[11px] text-slate-400 mb-1.5">جنس و پرداخت سطح (Material Finish):</div>
+                    <div class="grid grid-cols-4 gap-1.5 text-[11px]">
+                        <button onclick="setPartFinish('chrome')" class="py-1 px-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">کروم براق</button>
+                        <button onclick="setPartFinish('brushed')" class="py-1 px-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">فلز برس‌خورده</button>
+                        <button onclick="setPartFinish('carbon')" class="py-1 px-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">مات / کربن</button>
+                        <button onclick="setPartFinish('glass')" class="py-1 px-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sky-300 transition">شیشه‌ای</button>
+                    </div>
+                </div>
+
+                <!-- Sliders: Individual Explode, Opacity, Roughness -->
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">جداسازی تکی قطعه</span>
+                            <span id="part-explode-label" class="font-mono text-sky-400">0%</span>
+                        </div>
+                        <input id="part-explode-slider" type="range" min="0" max="150" value="0" class="w-full">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">شفافیت (Opacity)</span>
+                            <span id="part-opacity-label" class="font-mono text-sky-400">100%</span>
+                        </div>
+                        <input id="part-opacity-slider" type="range" min="10" max="100" value="100" class="w-full">
+                    </div>
+                </div>
+
+                <!-- Visibility & Wireframe & Isolate Buttons -->
+                <div class="grid grid-cols-3 gap-1.5 pt-1">
+                    <button id="btn-part-vis" onclick="toggleSelectedPartVisibility()" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-200 transition">
+                        مخفی کردن
+                    </button>
+                    <button id="btn-part-wire" onclick="toggleSelectedPartWireframe()" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-200 transition">
+                        حالت شبکه‌ای
+                    </button>
+                    <button id="btn-part-isolate" onclick="toggleIsolateSelectedPart()" class="py-1.5 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-bold text-amber-300 transition">
+                        ایزوله (فقط همین)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Technical Specs Cards -->
+            <div class="grid grid-cols-2 gap-2">
+                <div class="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/80">
+                    <div class="text-[10px] text-slate-400">آلیاژ و متریال مهندسی</div>
+                    <div id="spec-alloy" class="text-xs font-bold text-amber-300 mt-0.5">فولاد فورج 4340 کروم-مولیبدن</div>
+                </div>
+                <div class="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/80">
+                    <div class="text-[10px] text-slate-400">تعداد / ساختار در موتور</div>
+                    <div id="spec-count" class="text-xs font-bold text-emerald-300 mt-0.5">۱ محور یکپارچه + ۱۶ ژورنال</div>
+                </div>
+                <div class="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/80">
+                    <div class="text-[10px] text-slate-400">تحمل دما و فشار کاری</div>
+                    <div id="spec-stress" class="text-xs font-bold text-rose-300 mt-0.5">۱۸۰ بار فشار / ۳۵۰ درجه</div>
+                </div>
+                <div class="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/80">
+                    <div class="text-[10px] text-slate-400">وزن تقریبی مجموعه</div>
+                    <div id="spec-weight" class="text-xs font-bold text-sky-300 mt-0.5">۴۲.۵ کیلوگرم</div>
+                </div>
+            </div>
+
+            <!-- Detailed Persian Engineering Explanation -->
+            <div class="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 flex flex-col gap-2">
+                <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                    شرح وظیفه و نحوه عملکرد در موتور ۱۶ سیلندر:
+                </h3>
+                <p id="detail-description" class="text-xs text-slate-300 leading-6 text-justify"></p>
+                <div class="mt-1 pt-2 border-t border-slate-800/80">
+                    <span class="text-[11px] font-bold text-amber-400">نکته مهندسی: </span>
+                    <span id="detail-pro-tip" class="text-[11px] text-slate-300 leading-5"></span>
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- Bottom Master Exploded View Slider Bar (نوار جداسازی تمام بخش‌های موتور) -->
+    <footer class="fixed bottom-3 left-3 right-3 z-20 flex justify-center pointer-events-none">
+        <div class="glass-panel px-5 py-3 rounded-2xl w-full max-w-3xl flex flex-col gap-2 pointer-events-auto border border-sky-500/30">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+                    <span class="text-xs md:text-sm font-black text-white">نوار جداسازی و نمای انفجاری قطعات موتور (Exploded View)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="animateExplodeTo(0)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-slate-200 border border-slate-700 transition">مونتاژ کامل (۰٪)</button>
+                    <button onclick="animateExplodeTo(45)" class="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-[11px] font-bold text-sky-300 border border-sky-500/40 transition">نیمه‌باز (۴۵٪)</button>
+                    <button onclick="animateExplodeTo(100)" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-[11px] font-bold text-amber-300 border border-amber-500/40 transition">جداسازی کامل (۱۰۰٪)</button>
+                    <span id="master-explode-val" class="text-sm font-mono font-black text-sky-400 min-w-[46px] text-left">0%</span>
+                </div>
+            </div>
+            <input id="master-explode-slider" type="range" min="0" max="100" step="0.5" value="0" class="w-full explode-slider">
+        </div>
+    </footer>
+
+    <script>
+        // ============================================================================
+        // 1. COMPREHENSIVE 16-CYLINDER ENGINE PARTS DATABASE (PERSIAN & TECHNICAL)
+        // ============================================================================
+        const ENGINE_PARTS_DATA = [
+            {
+                id: 'crankshaft',
+                faName: 'میل‌لنگ فورج‌شده و فلایویل',
+                enName: 'Crankshaft & Flywheel',
+                badge: 'بخش ۱ از ۱۰ • هسته مرکزی',
+                defaultColor: '#d4d8dd',
+                metalness: 0.92,
+                roughness: 0.18,
+                alloy: 'فولاد نیتراته فورج 4340 کروم-مولیبدن',
+                count: '۱ محور یکپارچه + وزنه‌های تعادل + فلایویل',
+                stress: 'تحمل گشتاور ۱۶۰۰ نیوتن‌متر / ۱۸۰ بار',
+                weight: '۴۲.۵ کیلوگرم',
+                explodeDir: { x: 0, y: -1.4, z: -2.2 },
+                description: 'میل‌لنگ ستون فقرات موتور ۱۶ سیلندر است که حرکت خطی و رفت‌وبرگشتی ۱۶ پیستون را به حرکت دورانی پیوسته تبدیل می‌کند. در انتهای آن فلایویل (چرخ طیار) نصب شده که انرژی جنبشی احتراق‌ها را ذخیره کرده و نوسانات چرخشی را کاملاً جذب می‌کند تا انتقال قدرت به گیربکس بدون لرزش انجام شود.',
+                proTip: 'در موتورهای ۱۶ سیلندر، در هر ۹۰ درجه چرخش میل‌لنگ دقیقاً ۲ احتراق رخ می‌دهد؛ به همین دلیل بالانس دینامیکی وزنه‌های میل‌لنگ با دقت میکرونی توسط لیزر انجام می‌شود.'
+            },
+            {
+                id: 'pistons',
+                faName: 'پیستون‌ها و رینگ‌های تراکمی (۱۶ عدد)',
+                enName: 'Forged Pistons & Wrist Pins (16x)',
+                badge: 'بخش ۲ از ۱۰ • سیستم متحرک',
+                defaultColor: '#f59e0b',
+                metalness: 0.85,
+                roughness: 0.25,
+                alloy: 'آلیاژ آلومینیوم-سیلیکون ۲۶۱۸ با پوشش سرامیک',
+                count: '۱۶ پیستون + ۴۸ رینگ + ۱۶ گژن‌پین',
+                stress: 'دمای تاج پیستون تا ۶۵۰ درجه سانتی‌گراد',
+                weight: '۴۸۰ گرم به ازای هر پیستون',
+                explodeDir: { x: 0, y: 2.2, z: 0 }, // Radial along cylinder bank in custom logic
+                description: '۱۶ پیستون وظیفه دارند فشار عظیم ناشی از انفجار مخلوط سوخت و هوا را مستقیماً دریافت کرده و به سمت پایین حرکت کنند. هر پیستون دارای ۳ رینگ (تراکمی، جمع‌کننده و روغنی) برای آب‌بندی کامل محفظه احتراق و جلوگیری از نشت گاز یا روغن است.',
+                proTip: 'در دور موتور ۸۰۰۰ RPM، هر پیستون بیش از ۱۳۰ بار در ثانیه تغییر جهت می‌دهد و شتابی معادل ۳۵۰۰ برابر جاذبه زمین (3500G) را تحمل می‌کند.'
+            },
+            {
+                id: 'conrods',
+                faName: 'شاتون‌های تیتانیومی (۱۶ عدد)',
+                enName: 'Titanium Connecting Rods (16x)',
+                badge: 'بخش ۳ از ۱۰ • رابط مکانیکی',
+                defaultColor: '#94a3b8',
+                metalness: 0.88,
+                roughness: 0.22,
+                alloy: 'تیتانیوم گرید ۵ فورج‌شده (Ti-6Al-4V)',
+                count: '۱۶ شاتون مقطع H-Beam',
+                stress: 'بار کششی و فشاری تا ۱۲ تن بر هر شاتون',
+                weight: '۳۹۰ گرم به ازای هر شاتون',
+                explodeDir: { x: 0, y: 1.1, z: 0 },
+                description: 'شاتون یا دسته پیستون، حلقه رابط میان گژن‌پینِ پیستون و یاتاقان‌های متحرک میل‌لنگ است. این قطعه هم‌زمان حرکت رفت‌وبرگشتی سر کوچک (متصل به پیستون) و حرکت دورانی سر بزرگ (متصل به میل‌لنگ) را اجرا می‌کند.',
+                proTip: 'استفاده از تیتانیوم با مقطع H-Beam وزن توده رفت‌وبرگشتی موتور ۱۶ سیلندر را تا ۳۵ درصد کاهش داده و امکان رسیدن به دورهای بسیار بالا را فراهم می‌سازد.'
+            },
+            {
+                id: 'block',
+                faName: 'بلوک سیلندر ۱۶ سیلندر و بوش‌ها',
+                enName: 'W16 / V16 Cylinder Block & Crankcase',
+                badge: 'بخش ۴ از ۱۰ • سازه اصلی',
+                defaultColor: '#475569',
+                metalness: 0.75,
+                roughness: 0.35,
+                alloy: 'آلیاژ آلومینیوم ریخته‌گری A356-T6 با پوشش نیکاسیل',
+                count: '۱ بلوک یکپارچه با ۱۶ سیلندر مجزا',
+                stress: 'مقاومت سازه‌ای در برابر ۱۵۰۰ اسب‌بخار',
+                weight: '۹۸ کیلوگرم',
+                explodeDir: { x: 0, y: 0, z: 0 },
+                description: 'بلوک سیلندر بدنه و شاسی اصلی موتور است که ۱۶ استوانه (سیلندر) در دو بانک متقارن درون آن ماشین‌کاری شده‌اند. کانال‌های عبور آب خنک‌کننده (واترجکت) و مجاری روغن‌کاری تحت فشار در دیواره این بلوک تعبیه شده‌اند.',
+                proTip: 'پوشش پلاسمایی نیکاسیل (Nikasil) روی دیواره داخلی سیلندرها اصطکاک رینگ پیستون را به حداقل رسانده و نیاز به بوش‌های چدنی سنگین را از بین می‌برد.'
+            },
+            {
+                id: 'heads',
+                faName: 'سرسیلندرهای دوگانه و محفظه احتراق',
+                enName: 'Dual Cylinder Heads',
+                badge: 'بخش ۵ از ۱۰ • بخش فوقانی',
+                defaultColor: '#64748b',
+                metalness: 0.8,
+                roughness: 0.28,
+                alloy: 'آلیاژ آلومینیوم-مس مقاوم به حرارت بالا',
+                count: '۲ سرسیلندر بزرگ (۸ سیلندر در هر طرف)',
+                stress: 'دمای کاری محفظه احتراق تا ۹۰۰ درجه',
+                weight: '۳۶ کیلوگرم (مجموع دو بانک)',
+                explodeDir: { x: 2.2, y: 2.6, z: 0 },
+                description: 'سرسیلندرها در بالای بلوک سیلندر بسته می‌شوند و سقف محفظه احتراق را شکل می‌دهند. مجاری ورودی هوا (پورت‌های مکش)، مجاری خروجی دود، نشیمنگاه ۶۴ سوپاپ و محل نصب شمع‌ها همگی درون سرسیلندر قرار دارند.',
+                proTip: 'طراحی محفظه احتراق به شکل Pent-Roof (سقف شیروانی) باعث ایجاد تلاطم گردابی (Swirl & Tumble) در مخلوط سوخت و هوا شده و راندمان انفجار را به حداکثر می‌رساند.'
+            },
+            {
+                id: 'valvetrain',
+                faName: 'سیستم ۶۴ سوپاپ و فنرهای سوپاپ',
+                enName: '64-Valve System & Springs',
+                badge: 'بخش ۶ از ۱۰ • تنفس موتور',
+                defaultColor: '#38bdf8',
+                metalness: 0.9,
+                roughness: 0.15,
+                alloy: 'سوپاپ هوا: تیتانیوم / سوپاپ دود: اینکونل پرشده با سدیم',
+                count: '۶۴ سوپاپ (۳۲ سوپاپ هوا + ۳۲ سوپاپ دود)',
+                stress: 'باز و بسته شدن تا ۷۰ بار در ثانیه',
+                weight: '۴.۸ کیلوگرم کل مجموعه',
+                explodeDir: { x: 2.8, y: 3.4, z: 0 },
+                description: 'هر سیلندر در این موتور دارای ۴ سوپاپ (۲ سوپاپ ورودی هوا و ۲ سوپاپ خروجی دود) و در مجموع ۶۴ سوپاپ است. سوپاپ‌های هوا مخلوط تازه را وارد سیلندر کرده و سوپاپ‌های دود گازهای داغ ناشی از احتراق را به منیفولد اگزوز هدایت می‌کنند.',
+                proTip: 'ساق سوپاپ‌های دود توخالی بوده و با فلز سدیم پر شده است؛ سدیم در حین کار ذوب شده و با حرکت بالا و پایین، حرارت سر سوپاپ را به سرعت به سرسیلندر منتقل می‌کند.'
+            },
+            {
+                id: 'camshafts',
+                faName: 'چهار میل‌سوپاپ و چرخ‌دنده‌های تایمینگ',
+                enName: 'Quad Camshafts (DOHC) & Timing Gears',
+                badge: 'بخش ۷ از ۱۰ • فرماندهی تایمینگ',
+                defaultColor: '#eab308',
+                metalness: 0.85,
+                roughness: 0.2,
+                alloy: 'چدن آلیاژی سخت‌کاری شده القایی',
+                count: '۴ میل‌سوپاپ + ۶۴ بادامک + سیستم تایمینگ متغیر',
+                stress: 'چرخش با نصف دور میل‌لنگ (نسبت ۱ به ۲)',
+                weight: '۱۴.۲ کیلوگرم',
+                explodeDir: { x: 3.3, y: 4.1, z: 1.4 },
+                description: 'چهار میل‌سوپاپ در بالای سرسیلندرها (Quad-Cam) وظیفه دارند با چرخش بادامک‌های تخم‌مرغی‌شکل خود، ۶۴ سوپاپ را در کسری از ثانیه و دقیقاً هماهنگ با موقعیت پیستون‌ها باز و بسته کنند.',
+                proTip: 'سیستم زمان‌بندی متغیر سوپاپ‌ها (VVT) زاویه میل‌سوپاپ‌ها را در دورهای مختلف تغییر می‌دهد تا هم در دور آرام موتور نرم کار کند و هم در دور بالا حداکثر توان استخراج شود.'
+            },
+            {
+                id: 'ignition',
+                faName: 'شمع‌های ایریدیوم و کوئل‌های جرقه (۱۶ عدد)',
+                enName: 'Spark Plugs & Direct Ignition Coils (16x)',
+                badge: 'بخش ۸ از ۱۰ • سیستم احتراق',
+                defaultColor: '#ef4444',
+                metalness: 0.65,
+                roughness: 0.3,
+                alloy: 'الکترود مرکزی ایریدیوم-پلاتینیوم با عایق سرامیک آلومینا',
+                count: '۱۶ شمع + ۱۶ کوئل مستقل (Coil-on-Plug)',
+                stress: 'ولتاژ جرقه ۴۲,۰۰۰ ولت در دمای ۹۵۰ درجه',
+                weight: '۳.۲ کیلوگرم',
+                explodeDir: { x: 3.8, y: 4.9, z: 0 },
+                description: 'در پایان مرحله تراکم که مخلوط سوخت و هوا به شدت فشرده و داغ شده است، هر کوئل ولتاژ برق ۱۲ ولت را به بیش از ۴۰ هزار ولت افزایش می‌دهد تا شمع جرقه قوس الکتریکی را ایجاد کرده و انفجار قدرت را آغاز کند.',
+                proTip: 'کوئل‌های این موتور به سنسور جریان یونیزاسیون مجهز هستند که کیفیت احتراق و احتمال ناک (کوبش) را در هر سیلندر به صورت لحظه‌ای به ECU گزارش می‌دهند.'
+            },
+            {
+                id: 'intake_turbo',
+                faName: 'منیفولد هوا و ۴ توربوشارژر (Quad-Turbo)',
+                enName: 'Carbon Intake Plenum & Quad-Turbochargers',
+                badge: 'بخش ۹ از ۱۰ • پرخوران و تنفس',
+                defaultColor: '#0ea5e9',
+                metalness: 0.78,
+                roughness: 0.22,
+                alloy: 'فیبر کربن تقویت‌شده + ایمپلر تیتانیوم-آلومینید',
+                count: '۱ منیفولد مرکزی + ۴ توربوشارژر دو مرحله‌ای',
+                stress: 'فشار بوست ۲.۸ بار / چرخش توربو تا ۱۶۰,۰۰۰ RPM',
+                weight: '۲۸.۵ کیلوگرم',
+                explodeDir: { x: 0, y: 4.8, z: 0 },
+                description: 'چهار توربوشارژر با استفاده از انرژی گازهای خروجی اگزوز، هوای ورودی را با فشار بالا فشرده کرده و پس از خنک‌سازی در اینترکولر، از طریق منیفولد مرکزی به هر ۱۶ سیلندر پمپاژ می‌کنند تا اکسیژن بسیار بیشتری برای سوزاندن سوخت فراهم شود.',
+                proTip: 'در دورهای پایین ابتدا ۲ توربوشارژر کوچک‌تر وارد مدار می‌شوند تا تأخیر توربو (Turbo Lag) صفر شود و از دور ۳۸۰۰ به بالا هر ۴ توربو با هم توان کامل را تولید می‌کنند.'
+            },
+            {
+                id: 'exhaust_oilpan',
+                faName: 'منیفولدهای اگزوز تیتانیومی و کارتر روغن',
+                enName: 'Titanium Exhaust Headers & Dry Sump Oil Pan',
+                badge: 'بخش ۱۰ از ۱۰ • تخلیه و روانکاری',
+                defaultColor: '#cd7f32',
+                metalness: 0.85,
+                roughness: 0.25,
+                alloy: 'لوله‌های اینکونل ۶۲۵ و کارتر آلومینیوم ماشین‌کاری (CNC)',
+                count: '۱۶ لوله هدرز + ۲ کلکتور + کارتر کارتل خشک',
+                stress: 'گداختگی حرارتی اگزوز تا ۱۰۰۰ درجه سانتی‌گراد',
+                weight: '۲۴ کیلوگرم',
+                explodeDir: { x: 3.8, y: -2.2, z: 0 },
+                description: 'هدرز و منیفولد اگزوز گازهای سوخته ۱۶ سیلندر را با کمترین مقاومت جمع‌آوری کرده و به سمت توربینِ توربوشارژرها هدایت می‌کنند. در بخش زیرین نیز کارتر روغن سیستم کارتل خشک (Dry Sump) قرار دارد که روانکاری و خنک‌کاری مداوم قطعات را تضمین می‌کند.',
+                proTip: 'در دورهای بالا، لوله‌های هدرز اینکونل به دلیل عبور حجم عظیمی از گازهای احتراق به رنگ سرخ و نارنجی درخشان درمی‌آیند که در این شبیه‌ساز نیز به صورت زنده قابل مشاهده است.'
+            }
+        ];
+
+        // 16-Cylinder Firing Order (even 45-degree crank intervals across 720 degrees = 4π radians)
+        const FIRING_ORDER = [1, 14, 9, 4, 7, 12, 15, 6, 13, 8, 3, 16, 11, 2, 5, 10];
+        const CYLINDER_PHASE_OFFSETS = new Array(16).fill(0);
+        FIRING_ORDER.forEach((cylNum, idx) => {
+            CYLINDER_PHASE_OFFSETS[cylNum - 1] = idx * ((Math.PI * 4) / 16);
+        });
+
+        // ============================================================================
+        // 2. APPLICATION STATE
+        // ============================================================================
+        const state = {
+            rpm: 2400,
+            crankAngle: 0, // 0 to 4π (720 deg 4-stroke cycle)
+            bankAngleDeg: 65,
+            strokeScale: 1.0,
+            masterExplode: 0, // 0 to 1
+            targetMasterExplode: 0,
+            showCombustion: true,
+            xrayBlock: false,
+            thermalExhaust: true,
+            autoRotate: false,
+            selectedPartId: 'crankshaft',
+            isolatedPartId: null,
+            partsState: {}
+        };
+
+        ENGINE_PARTS_DATA.forEach(p => {
+            state.partsState[p.id] = {
+                color: p.defaultColor,
+                metalness: p.metalness,
+                roughness: p.roughness,
+                opacity: 1.0,
+                visible: true,
+                wireframe: false,
+                individualExplode: 0 // 0 to 1.5
+            };
+        });
+
+        // ============================================================================
+        // 3. THREE.JS SCENE, CAMERA, LIGHTING & PROCEDURAL ENVIRONMENT
+        // ============================================================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.position.set(11.5, 7.2, 12.5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.15;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.06;
+        controls.maxDistance = 38;
+        controls.minDistance = 3.5;
+        controls.target.set(0, 0.6, 0);
+
+        // Generate a procedural studio reflection environment texture for realistic metal reflections
+        function createStudioEnvironment() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 256);
+            grad.addColorStop(0, '#0f172a');
+            grad.addColorStop(0.25, '#38bdf8');
+            grad.addColorStop(0.48, '#f8fafc');
+            grad.addColorStop(0.52, '#1e293b');
+            grad.addColorStop(0.85, '#f59e0b');
+            grad.addColorStop(1, '#020617');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 256);
+
+            // Studio softboxes
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.fillRect(40, 35, 140, 45);
+            ctx.fillRect(310, 45, 150, 40);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.mapping = THREE.EquirectangularReflectionMapping;
+            return tex;
+        }
+        scene.environment = createStudioEnvironment();
+
+        // Studio Lights
+        const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x0f172a, 0.85);
+        scene.add(hemiLight);
+
+        const mainDirLight = new THREE.DirectionalLight(0xffffff, 1.45);
+        mainDirLight.position.set(12, 18, 14);
+        mainDirLight.castShadow = true;
+        mainDirLight.shadow.mapSize.width = 2048;
+        mainDirLight.shadow.mapSize.height = 2048;
+        scene.add(mainDirLight);
+
+        const rimLight1 = new THREE.DirectionalLight(0x38bdf8, 0.9);
+        rimLight1.position.set(-14, 8, -12);
+        scene.add(rimLight1);
+
+        const rimLight2 = new THREE.DirectionalLight(0xf59e0b, 0.65);
+        rimLight2.position.set(0, -12, 10);
+        scene.add(rimLight2);
+
+        // Subtle Technical Floor Grid
+        const gridHelper = new THREE.GridHelper(32, 32, 0x0ea5e9, 0x1e293b);
+        gridHelper.position.y = -3.8;
+        gridHelper.material.opacity = 0.25;
+        gridHelper.material.transparent = true;
+        scene.add(gridHelper);
+
+        // ============================================================================
+        // 4. MATERIALS & PROCEDURAL 16-CYLINDER ENGINE GEOMETRY BUILDER
+        // ============================================================================
+        const partMaterials = {};
+        const partMeshesMap = {}; // partId -> Array of THREE.Mesh for raycasting & styling
+
+        ENGINE_PARTS_DATA.forEach(part => {
+            partMeshesMap[part.id] = [];
+            partMaterials[part.id] = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(part.defaultColor),
+                metalness: part.metalness,
+                roughness: part.roughness,
+                envMap: scene.environment,
+                envMapIntensity: 1.35,
+                side: THREE.DoubleSide
+            });
+        });
+
+        // Secondary accent materials (e.g., dark carbon / steel bolts / glowing elements)
+        const darkAccentMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            metalness: 0.7,
+            roughness: 0.4,
+            envMap: scene.environment
+        });
+
+        function registerMesh(mesh, partId) {
+            mesh.userData.partId = partId;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            partMeshesMap[partId].push(mesh);
+            return mesh;
+        }
+
+        const engineRoot = new THREE.Group();
+        scene.add(engineRoot);
+
+        // Engine dimensional constants
+        const NUM_CYLINDERS = 16; // 8 per bank (Left & Right banks, staggered W16 style)
+        const CYL_SPACING = 0.72;
+        const CRANK_RADIUS = 0.46;
+        const CONROD_LENGTH = 1.48;
+        const BORE_RADIUS = 0.34;
+
+        // Groups for animated & explodable assemblies
+        const crankAssembly = new THREE.Group();
+        const blockAssembly = new THREE.Group();
+        const oilPanAssembly = new THREE.Group();
+        const intakeTurboAssembly = new THREE.Group();
+        const turboImpellers = [];
+
+        engineRoot.add(crankAssembly);
+        engineRoot.add(blockAssembly);
+        engineRoot.add(oilPanAssembly);
+        engineRoot.add(intakeTurboAssembly);
+
+        // Per-cylinder dynamic references
+        const cylinders = [];
+        // Per-bank references (Left bank = -1, Right bank = +1)
+        const banks = [];
+
+        // ----------------------------------------------------------------------------
+        // 4.1 Build Crankshaft & Flywheel (میل‌لنگ و فلایویل)
+        // ----------------------------------------------------------------------------
+        function buildCrankshaft() {
+            const totalLen = NUM_CYLINDERS * CYL_SPACING * 0.52 + 1.8;
+            const mainShaftGeo = new THREE.CylinderGeometry(0.22, 0.22, totalLen, 24);
+            mainShaftGeo.rotateX(Math.PI / 2);
+            const mainShaft = registerMesh(new THREE.Mesh(mainShaftGeo, partMaterials['crankshaft']), 'crankshaft');
+            crankAssembly.add(mainShaft);
+
+            // Flywheel at rear (-Z)
+            const flywheelGroup = new THREE.Group();
+            flywheelGroup.position.z = -totalLen / 2 - 0.15;
+
+            const fwDiscGeo = new THREE.CylinderGeometry(1.35, 1.35, 0.22, 48);
+            fwDiscGeo.rotateX(Math.PI / 2);
+            flywheelGroup.add(registerMesh(new THREE.Mesh(fwDiscGeo, partMaterials['crankshaft']), 'crankshaft'));
+
+            // Flywheel starter ring teeth & weight reduction holes
+            for (let i = 0; i < 12; i++) {
+                const a = (i / 12) * Math.PI * 2;
+                const holeGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.26, 16);
+                holeGeo.rotateX(Math.PI / 2);
+                const holeMesh = registerMesh(new THREE.Mesh(holeGeo, darkAccentMat), 'crankshaft');
+                holeMesh.position.set(Math.cos(a) * 0.85, Math.sin(a) * 0.85, 0);
+                flywheelGroup.add(holeMesh);
+            }
+            crankAssembly.add(flywheelGroup);
+
+            // Front Harmonic Damper Pulley (+Z)
+            const pulleyGeo = new THREE.CylinderGeometry(0.68, 0.68, 0.28, 32);
+            pulleyGeo.rotateX(Math.PI / 2);
+            const pulley = registerMesh(new THREE.Mesh(pulleyGeo, partMaterials['crankshaft']), 'crankshaft');
+            pulley.position.z = totalLen / 2 + 0.1;
+            crankAssembly.add(pulley);
+        }
+        buildCrankshaft();
+
+        // ----------------------------------------------------------------------------
+        // 4.2 Build 16 Cylinders (Pistons, Connecting Rods, Crank Pins, Spark Flashes)
+        // ----------------------------------------------------------------------------
+        for (let i = 0; i < NUM_CYLINDERS; i++) {
+            const bankSide = (i % 2 === 0) ? -1 : 1; // Left (-1) or Right (+1)
+            const rowIdx = Math.floor(i / 2); // 0 to 7 along Z axis
+            const zPos = (rowIdx - 3.5) * CYL_SPACING + (bankSide * 0.12);
+            const phaseOffset = CYLINDER_PHASE_OFFSETS[i];
+
+            // Crank Pin & Counterweight Web on Crankshaft
+            const pinAngle = phaseOffset % (Math.PI * 2);
+            const crankThrowGroup = new THREE.Group();
+            crankThrowGroup.position.z = zPos;
+
+            // Crankpin journal
+            const pinGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.28, 20);
+            pinGeo.rotateX(Math.PI / 2);
+            const pinMesh = registerMesh(new THREE.Mesh(pinGeo, partMaterials['crankshaft']), 'crankshaft');
+            pinMesh.position.set(Math.sin(pinAngle) * CRANK_RADIUS, Math.cos(pinAngle) * CRANK_RADIUS, 0);
+            crankThrowGroup.add(pinMesh);
+
+            // Counterweight web
+            const webGeo = new THREE.BoxGeometry(0.52, 0.92, 0.12);
+            const webMesh = registerMesh(new THREE.Mesh(webGeo, partMaterials['crankshaft']), 'crankshaft');
+            webMesh.position.set(Math.sin(pinAngle) * (CRANK_RADIUS * 0.35), Math.cos(pinAngle) * (CRANK_RADIUS * 0.35), -0.14);
+            webMesh.rotation.z = -pinAngle;
+            crankThrowGroup.add(webMesh);
+
+            crankAssembly.add(crankThrowGroup);
+
+            // Cylinder Axis Pivot Group (rotates with Bank Angle)
+            const cylAxisGroup = new THREE.Group();
+            cylAxisGroup.position.z = zPos;
+            engineRoot.add(cylAxisGroup);
+
+            // Piston Group (translates along local Y of cylAxisGroup)
+            const pistonGroup = new THREE.Group();
+            cylAxisGroup.add(pistonGroup);
+
+            // Piston Crown
+            const crownGeo = new THREE.CylinderGeometry(BORE_RADIUS * 0.96, BORE_RADIUS * 0.96, 0.44, 28);
+            const crownMesh = registerMesh(new THREE.Mesh(crownGeo, partMaterials['pistons']), 'pistons');
+            pistonGroup.add(crownMesh);
+
+            // 3 Piston Compression Rings
+            for (let r = 0; r < 3; r++) {
+                const ringGeo = new THREE.TorusGeometry(BORE_RADIUS * 0.97, 0.016, 8, 28);
+                ringGeo.rotateX(Math.PI / 2);
+                const ringMesh = registerMesh(new THREE.Mesh(ringGeo, darkAccentMat), 'pistons');
+                ringMesh.position.y = 0.14 - r * 0.07;
+                pistonGroup.add(ringMesh);
+            }
+
+            // Wrist Pin (Gudgeon Pin)
+            const wristGeo = new THREE.CylinderGeometry(0.08, 0.08, BORE_RADIUS * 1.8, 16);
+            wristGeo.rotateX(Math.PI / 2);
+            const wristMesh = registerMesh(new THREE.Mesh(wristGeo, partMaterials['pistons']), 'pistons');
+            wristMesh.position.y = -0.05;
+            pistonGroup.add(wristMesh);
+
+            // Connecting Rod Group (pivots at piston wrist pin or crankpin)
+            const conrodGroup = new THREE.Group();
+            cylAxisGroup.add(conrodGroup);
+
+            // H-Beam Rod Shaft
+            const rodShaftGeo = new THREE.BoxGeometry(0.13, CONROD_LENGTH, 0.11);
+            const rodShaftMesh = registerMesh(new THREE.Mesh(rodShaftGeo, partMaterials['conrods']), 'conrods');
+            rodShaftMesh.position.y = -CONROD_LENGTH / 2;
+            conrodGroup.add(rodShaftMesh);
+
+            // Big End Bearing Cap
+            const bigEndGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.18, 20);
+            bigEndGeo.rotateX(Math.PI / 2);
+            const bigEndMesh = registerMesh(new THREE.Mesh(bigEndGeo, partMaterials['conrods']), 'conrods');
+            bigEndMesh.position.y = -CONROD_LENGTH;
+            conrodGroup.add(bigEndMesh);
+
+            // Combustion Flash Glow inside Cylinder
+            const flashGeo = new THREE.SphereGeometry(BORE_RADIUS * 0.85, 16, 12);
+            flashGeo.scale(1, 0.45, 1);
+            const flashMat = new THREE.MeshBasicMaterial({
+                color: 0xff5500,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const flashMesh = new THREE.Mesh(flashGeo, flashMat);
+            cylAxisGroup.add(flashMesh);
+
+            cylinders.push({
+                index: i,
+                bankSide,
+                rowIdx,
+                zPos,
+                phaseOffset,
+                pinAngle,
+                pinMesh,
+                webMesh,
+                cylAxisGroup,
+                pistonGroup,
+                conrodGroup,
+                flashMesh,
+                flashMat
+            });
+        }
+
+        // ----------------------------------------------------------------------------
+        // 4.3 Build Bank Assemblies (Block Sleeves, Heads, 64 Valves, 4 Cams, 16 Coils, Exhaust)
+        // ----------------------------------------------------------------------------
+        [-1, 1].forEach(bankSide => {
+            const bankRoot = new THREE.Group();
+            engineRoot.add(bankRoot);
+
+            // 1. Engine Block Bank Half
+            const bankBlockGroup = new THREE.Group();
+            bankRoot.add(bankBlockGroup);
+
+            const blockBodyGeo = new THREE.BoxGeometry(1.15, 1.75, 6.2);
+            const blockBodyMesh = registerMesh(new THREE.Mesh(blockBodyGeo, partMaterials['block']), 'block');
+            blockBodyMesh.position.set(0, 1.55, 0);
+            bankBlockGroup.add(blockBodyMesh);
+
+            // Cylinder Bore Sleeves & Cooling Fins on Block
+            for (let r = 0; r < 8; r++) {
+                const zPos = (r - 3.5) * CYL_SPACING + (bankSide * 0.12);
+                const sleeveGeo = new THREE.CylinderGeometry(BORE_RADIUS * 1.08, BORE_RADIUS * 1.08, 1.82, 24, 1, true);
+                const sleeveMesh = registerMesh(new THREE.Mesh(sleeveGeo, darkAccentMat), 'block');
+                sleeveMesh.position.set((r % 2 === 0 ? -0.12 : 0.12), 1.55, zPos);
+                bankBlockGroup.add(sleeveMesh);
+            }
+
+            // 2. Cylinder Head Group
+            const headGroup = new THREE.Group();
+            bankRoot.add(headGroup);
+
+            const headBoxGeo = new THREE.BoxGeometry(1.32, 0.58, 6.35);
+            const headBoxMesh = registerMesh(new THREE.Mesh(headBoxGeo, partMaterials['heads']), 'heads');
+            headBoxMesh.position.set(0, 2.75, 0);
+            headGroup.add(headBoxMesh);
+
+            // Head cooling fins
+            for (let f = 0; f < 5; f++) {
+                const finGeo = new THREE.BoxGeometry(1.4, 0.04, 6.4);
+                const finMesh = registerMesh(new THREE.Mesh(finGeo, partMaterials['heads']), 'heads');
+                finMesh.position.set(0, 2.55 + f * 0.1, 0);
+                headGroup.add(finMesh);
+            }
+
+            // 3. 32 Valves per Bank (64 Total)
+            const valvetrainGroup = new THREE.Group();
+            bankRoot.add(valvetrainGroup);
+            const bankValves = [];
+
+            for (let r = 0; r < 8; r++) {
+                const zPos = (r - 3.5) * CYL_SPACING + (bankSide * 0.12);
+                // 4 valves per cylinder (2 intake, 2 exhaust)
+                [-0.24, 0.24].forEach((xOff, vTypeIdx) => {
+                    [-0.14, 0.14].forEach(zOff => {
+                        const valveUnit = new THREE.Group();
+                        valveUnit.position.set(xOff, 2.85, zPos + zOff);
+
+                        // Valve Stem
+                        const stemGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.52, 10);
+                        const stemMesh = registerMesh(new THREE.Mesh(stemGeo, partMaterials['valvetrain']), 'valvetrain');
+                        valveUnit.add(stemMesh);
+
+                        // Valve Head Disc
+                        const headDiscGeo = new THREE.CylinderGeometry(0.11, 0.04, 0.05, 16);
+                        const headDiscMesh = registerMesh(new THREE.Mesh(headDiscGeo, partMaterials['valvetrain']), 'valvetrain');
+                        headDiscMesh.position.y = -0.26;
+                        valveUnit.add(headDiscMesh);
+
+                        // Valve Spring
+                        const springGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.28, 12, 4, true);
+                        const springMesh = registerMesh(new THREE.Mesh(springGeo, darkAccentMat), 'valvetrain');
+                        springMesh.position.y = 0.04;
+                        valveUnit.add(springMesh);
+
+                        valvetrainGroup.add(valveUnit);
+                        bankValves.push({
+                            mesh: valveUnit,
+                            rowIdx: r,
+                            isIntake: vTypeIdx === 0
+                        });
+                    });
+                });
+            }
+
+            // 4. Dual Overhead Camshafts per Bank (Quad Cam Total)
+            const camGroup = new THREE.Group();
+            bankRoot.add(camGroup);
+            const camShafts = [];
+
+            [-0.26, 0.26].forEach((xOff, cIdx) => {
+                const shaftHolder = new THREE.Group();
+                shaftHolder.position.set(xOff, 3.22, 0);
+
+                const shaftGeo = new THREE.CylinderGeometry(0.08, 0.08, 6.5, 20);
+                shaftGeo.rotateX(Math.PI / 2);
+                shaftHolder.add(registerMesh(new THREE.Mesh(shaftGeo, partMaterials['camshafts']), 'camshafts'));
+
+                // Timing Sprocket Gear at front (+Z)
+                const gearGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.1, 24);
+                gearGeo.rotateX(Math.PI / 2);
+                const gearMesh = registerMesh(new THREE.Mesh(gearGeo, partMaterials['camshafts']), 'camshafts');
+                gearMesh.position.z = 3.32;
+                shaftHolder.add(gearMesh);
+
+                // 16 Cam Lobes per shaft (64 total across 4 shafts)
+                for (let r = 0; r < 8; r++) {
+                    const zPos = (r - 3.5) * CYL_SPACING + (bankSide * 0.12);
+                    [-0.14, 0.14].forEach(zOff => {
+                        const lobeGeo = new THREE.BoxGeometry(0.12, 0.24, 0.07);
+                        const lobeMesh = registerMesh(new THREE.Mesh(lobeGeo, partMaterials['camshafts']), 'camshafts');
+                        lobeMesh.position.set(0, 0.06, zPos + zOff);
+                        lobeMesh.rotation.z = r * 0.78 + (cIdx * 1.2);
+                        shaftHolder.add(lobeMesh);
+                    });
+                }
+
+                camGroup.add(shaftHolder);
+                camShafts.push(shaftHolder);
+            });
+
+            // 5. Spark Plugs & Red Ignition Coils (8 per bank = 16 total)
+            const ignitionGroup = new THREE.Group();
+            bankRoot.add(ignitionGroup);
+
+            for (let r = 0; r < 8; r++) {
+                const zPos = (r - 3.5) * CYL_SPACING + (bankSide * 0.12);
+                const plugAssembly = new THREE.Group();
+                plugAssembly.position.set(0, 3.28, zPos);
+
+                // Ceramic insulator & hex body
+                const insulatorGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.45, 14);
+                plugAssembly.add(registerMesh(new THREE.Mesh(insulatorGeo, partMaterials['ignition']), 'ignition'));
+
+                // Top Ignition Coil Pack
+                const coilTopGeo = new THREE.BoxGeometry(0.22, 0.18, 0.22);
+                const coilTopMesh = registerMesh(new THREE.Mesh(coilTopGeo, partMaterials['ignition']), 'ignition');
+                coilTopMesh.position.y = 0.28;
+                plugAssembly.add(coilTopMesh);
+
+                ignitionGroup.add(plugAssembly);
+            }
+
+            // 6. Exhaust Headers (8 runners per bank merging into collector)
+            const exhaustGroup = new THREE.Group();
+            bankRoot.add(exhaustGroup);
+
+            const collectorGeo = new THREE.CylinderGeometry(0.19, 0.19, 6.2, 20);
+            collectorGeo.rotateX(Math.PI / 2);
+            const collectorMesh = registerMesh(new THREE.Mesh(collectorGeo, partMaterials['exhaust_oilpan']), 'exhaust_oilpan');
+            collectorMesh.position.set(bankSide * 1.15, 2.2, 0);
+            exhaustGroup.add(collectorMesh);
+
+            for (let r = 0; r < 8; r++) {
+                const zPos = (r - 3.5) * CYL_SPACING + (bankSide * 0.12);
+                const runnerGeo = new THREE.TorusGeometry(0.38, 0.085, 12, 20, Math.PI * 0.65);
+                const runnerMesh = registerMesh(new THREE.Mesh(runnerGeo, partMaterials['exhaust_oilpan']), 'exhaust_oilpan');
+                runnerMesh.position.set(bankSide * 0.72, 2.52, zPos);
+                runnerMesh.rotation.y = bankSide > 0 ? 0 : Math.PI;
+                exhaustGroup.add(runnerMesh);
+            }
+
+            banks.push({
+                bankSide,
+                bankRoot,
+                bankBlockGroup,
+                headGroup,
+                valvetrainGroup,
+                bankValves,
+                camGroup,
+                camShafts,
+                ignitionGroup,
+                exhaustGroup
+            });
+        });
+
+        // ----------------------------------------------------------------------------
+        // 4.4 Build Central Crankcase & Dry Sump Oil Pan
+        // ----------------------------------------------------------------------------
+        function buildCrankcaseAndSump() {
+            // Lower crankcase cradle (part of block)
+            const cradleGeo = new THREE.BoxGeometry(1.75, 0.85, 6.4);
+            const cradleMesh = registerMesh(new THREE.Mesh(cradleGeo, partMaterials['block']), 'block');
+            cradleMesh.position.set(0, -0.1, 0);
+            blockAssembly.add(cradleMesh);
+
+            // Finned Dry-Sump Oil Pan at bottom
+            const sumpGeo = new THREE.BoxGeometry(1.65, 0.45, 6.2);
+            const sumpMesh = registerMesh(new THREE.Mesh(sumpGeo, partMaterials['exhaust_oilpan']), 'exhaust_oilpan');
+            sumpMesh.position.set(0, -0.82, 0);
+            oilPanAssembly.add(sumpMesh);
+
+            for (let i = -5; i <= 5; i++) {
+                const finGeo = new THREE.BoxGeometry(0.04, 0.12, 6.1);
+                const finMesh = registerMesh(new THREE.Mesh(finGeo, partMaterials['exhaust_oilpan']), 'exhaust_oilpan');
+                finMesh.position.set(i * 0.13, -1.08, 0);
+                oilPanAssembly.add(finMesh);
+            }
+        }
+        buildCrankcaseAndSump();
+
+        // ----------------------------------------------------------------------------
+        // 4.5 Build Central Intake Plenum & Quad-Turbochargers (منیفولد هوا و ۴ توربوشارژر)
+        // ----------------------------------------------------------------------------
+        function buildIntakeAndQuadTurbos() {
+            // Dual central plenums
+            [-0.42, 0.42].forEach(xPos => {
+                const plenumGeo = new THREE.CylinderGeometry(0.28, 0.28, 5.8, 24);
+                plenumGeo.rotateX(Math.PI / 2);
+                const plenumMesh = registerMesh(new THREE.Mesh(plenumGeo, partMaterials['intake_turbo']), 'intake_turbo');
+                plenumMesh.position.set(xPos, 3.65, 0);
+                intakeTurboAssembly.add(plenumMesh);
+            });
+
+            // 16 Intake Runners arching into the banks
+            for (let i = 0; i < 8; i++) {
+                const zPos = (i - 3.5) * CYL_SPACING;
+                [-1, 1].forEach(side => {
+                    const runnerGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.9, 14);
+                    const runnerMesh = registerMesh(new THREE.Mesh(runnerGeo, partMaterials['intake_turbo']), 'intake_turbo');
+                    runnerMesh.position.set(side * 0.72, 3.35, zPos);
+                    runnerMesh.rotation.z = side * 0.65;
+                    intakeTurboAssembly.add(runnerMesh);
+                });
+            }
+
+            // 4 Quad-Turbochargers mounted at front/rear sides
+            const turboCoords = [
+                { x: -1.45, y: 3.55, z: -2.5 },
+                { x:  1.45, y: 3.55, z: -2.5 },
+                { x: -1.45, y: 3.55, z:  2.5 },
+                { x:  1.45, y: 3.55, z:  2.5 }
+            ];
+
+            turboCoords.forEach(tc => {
+                const turboGroup = new THREE.Group();
+                turboGroup.position.set(tc.x, tc.y, tc.z);
+
+                // Compressor Housing (Torus snail)
+                const snailGeo = new THREE.TorusGeometry(0.38, 0.18, 16, 28);
+                const snailMesh = registerMesh(new THREE.Mesh(snailGeo, partMaterials['intake_turbo']), 'intake_turbo');
+                turboGroup.add(snailMesh);
+
+                // Spinning Compressor Impeller Wheel
+                const impellerGroup = new THREE.Group();
+                const hubGeo = new THREE.ConeGeometry(0.12, 0.28, 16);
+                hubGeo.rotateX(Math.PI / 2);
+                impellerGroup.add(registerMesh(new THREE.Mesh(hubGeo, partMaterials['intake_turbo']), 'intake_turbo'));
+
+                for (let b = 0; b < 8; b++) {
+                    const bladeGeo = new THREE.BoxGeometry(0.02, 0.28, 0.14);
+                    const bladeMesh = registerMesh(new THREE.Mesh(bladeGeo, darkAccentMat), 'intake_turbo');
+                    bladeMesh.rotation.z = (b / 8) * Math.PI * 2;
+                    impellerGroup.add(bladeMesh);
+                }
+                turboGroup.add(impellerGroup);
+                turboImpellers.push(impellerGroup);
+
+                intakeTurboAssembly.add(turboGroup);
+            });
+        }
+        buildIntakeAndQuadTurbos();
+
+        // ============================================================================
+        // 5. KINEMATICS, EXPLODED VIEW & REAL-TIME ANIMATION LOOP
+        // ============================================================================
+        function getPartTotalExplode(partId) {
+            return state.masterExplode + (state.partsState[partId]?.individualExplode || 0);
+        }
+
+        function updateEngineKinematics(dt) {
+            // Smooth interpolation for Master Explode slider
+            state.masterExplode += (state.targetMasterExplode - state.masterExplode) * Math.min(1, dt * 8);
+
+            // Advance Crankshaft Angle: 1 RPM = 1/60 rev/sec = (2π / 60) rad/sec
+            const omega = (state.rpm * Math.PI * 2) / 60;
+            // Scale visual rotation slightly at ultra-high RPM so human eye can appreciate piston motion without aliasing
+            const visualOmega = state.rpm <= 600 ? omega : (600 * Math.PI * 2 / 60) + Math.pow(state.rpm - 600, 0.72) * 0.18;
+            state.crankAngle = (state.crankAngle + visualOmega * dt) % (Math.PI * 4);
+
+            const halfBankRad = THREE.MathUtils.degToRad(state.bankAngleDeg / 2);
+            const r = CRANK_RADIUS * state.strokeScale;
+            const l = CONROD_LENGTH;
+
+            // 1. Crankshaft Rotation & Explode Offset
+            const crankExp = getPartTotalExplode('crankshaft');
+            crankAssembly.position.set(0, -crankExp * 1.5, -crankExp * 1.8);
+            crankAssembly.rotation.z = state.crankAngle;
+
+            // 2. Central Block & Oil Pan Explode Offsets
+            const blockExp = getPartTotalExplode('block');
+            blockAssembly.position.set(0, -blockExp * 0.4, 0);
+
+            const oilExp = getPartTotalExplode('exhaust_oilpan');
+            oilPanAssembly.position.set(0, -oilExp * 2.4, 0);
+
+            // 3. Intake & Quad-Turbos Explode + Impeller Rotation
+            const intakeExp = getPartTotalExplode('intake_turbo');
+            intakeTurboAssembly.position.set(0, intakeExp * 3.8, 0);
+            turboImpellers.forEach(imp => {
+                imp.rotation.z += visualOmega * 3.5 * dt;
+            });
+
+            // 4. Update Each of the 16 Cylinders (Exact Slider-Crank Kinematics)
+            const pistonExp = getPartTotalExplode('pistons');
+            const conrodExp = getPartTotalExplode('conrods');
+
+            cylinders.forEach(cyl => {
+                const bankAngle = cyl.bankSide * halfBankRad;
+                cyl.cylAxisGroup.rotation.z = -bankAngle;
+
+                // Relative crank angle for this cylinder bank
+                const theta = state.crankAngle + cyl.phaseOffset - bankAngle;
+                const sinT = Math.sin(theta);
+                const cosT = Math.cos(theta);
+
+                // Exact Piston Displacement along cylinder axis: s = r*cos(theta) + sqrt(l^2 - r^2*sin^2(theta))
+                const rootTerm = Math.sqrt(Math.max(0.01, l * l - r * r * sinT * sinT));
+                const pistonY = r * cosT + rootTerm;
+
+                // Connecting rod tilt angle: phi = -asin((r/l)*sin(theta))
+                const rodTilt = -Math.asin(THREE.MathUtils.clamp((r / l) * sinT, -0.95, 0.95));
+
+                // Apply Exploded View offset along cylinder axis
+                cyl.pistonGroup.position.y = pistonY + pistonExp * 3.2;
+
+                cyl.conrodGroup.position.y = pistonY + conrodExp * 1.6;
+                cyl.conrodGroup.rotation.z = rodTilt;
+
+                // 4-Stroke Cycle Phase (0 to 4π)
+                const cycleAngle = ((state.crankAngle + cyl.phaseOffset) % (Math.PI * 4) + Math.PI * 4) % (Math.PI * 4);
+                // Combustion flash occurs right around 2π (Top Dead Center between Compression & Power)
+                const distFromFiring = Math.abs(cycleAngle - Math.PI * 2);
+                if (state.showCombustion && state.rpm > 0 && distFromFiring < 0.45) {
+                    const intensity = 1 - (distFromFiring / 0.45);
+                    cyl.flashMat.opacity = intensity * 0.95;
+                    cyl.flashMesh.position.y = pistonY + 0.32 + pistonExp * 3.2;
+                    cyl.flashMesh.scale.setScalar(0.8 + intensity * 0.5);
+                } else {
+                    cyl.flashMat.opacity = 0;
+                }
+            });
+
+            // 5. Update Both Cylinder Banks (Block halves, Heads, 64 Valves, 4 Cams, Coils, Exhaust)
+            const headExp = getPartTotalExplode('heads');
+            const valveExp = getPartTotalExplode('valvetrain');
+            const camExp = getPartTotalExplode('camshafts');
+            const ignExp = getPartTotalExplode('ignition');
+
+            banks.forEach(bank => {
+                const bankAngle = bank.bankSide * halfBankRad;
+                bank.bankRoot.rotation.z = -bankAngle;
+
+                bank.bankBlockGroup.position.set(bank.bankSide * blockExp * 1.1, blockExp * 0.5, 0);
+                bank.headGroup.position.set(0, headExp * 2.1, 0);
+                bank.valvetrainGroup.position.set(0, valveExp * 2.9, 0);
+                bank.camGroup.position.set(0, camExp * 3.7, 0);
+                bank.ignitionGroup.position.set(0, ignExp * 4.5, 0);
+                bank.exhaustGroup.position.set(bank.bankSide * oilExp * 2.2, 0, 0);
+
+                // Rotate Overhead Camshafts at 0.5x Crankshaft speed
+                bank.camShafts.forEach(shaft => {
+                    shaft.rotation.z = state.crankAngle * 0.5;
+                });
+
+                // Actuate 64 Valves based on 4-stroke timing
+                bank.bankValves.forEach(v => {
+                    const cylIdx = v.rowIdx * 2 + (bank.bankSide === -1 ? 0 : 1);
+                    const cycleAngle = ((state.crankAngle + CYLINDER_PHASE_OFFSETS[cylIdx]) % (Math.PI * 4) + Math.PI * 4) % (Math.PI * 4);
+                    let lift = 0;
+                    if (v.isIntake && cycleAngle < Math.PI) {
+                        lift = Math.sin(cycleAngle) * 0.14;
+                    } else if (!v.isIntake && cycleAngle > Math.PI * 3) {
+                        lift = Math.sin(cycleAngle - Math.PI * 3) * 0.14;
+                    }
+                    v.mesh.position.y = 2.85 - lift;
+                });
+            });
+
+            // 6. Thermal Glow on Exhaust Manifolds at High RPM
+            const exhaustMat = partMaterials['exhaust_oilpan'];
+            if (state.thermalExhaust && state.rpm > 3200) {
+                const heatFactor = Math.min(1, (state.rpm - 3200) / 5000);
+                exhaustMat.emissive.setRGB(heatFactor * 0.85, heatFactor * 0.18, 0);
+                exhaustMat.emissiveIntensity = heatFactor * 1.2;
+            } else {
+                exhaustMat.emissive.setRGB(0, 0, 0);
+                exhaustMat.emissiveIntensity = 0;
+            }
+        }
+
+        // ============================================================================
+        // 6. UI SYNCHRONIZATION, PART SELECTION & CUSTOMIZATION HANDLERS
+        // ============================================================================
+        function renderPartsList() {
+            const listEl = document.getElementById('parts-list-container');
+            listEl.innerHTML = '';
+
+            ENGINE_PARTS_DATA.forEach((part, idx) => {
+                const pState = state.partsState[part.id];
+                const isSelected = state.selectedPartId === part.id;
+                const btn = document.createElement('div');
+                btn.className = `part-btn flex items-center justify-between p-2 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 cursor-pointer transition ${isSelected ? 'active' : ''}`;
+                btn.onclick = () => selectPart(part.id);
+
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2.5 overflow-hidden">
+                        <span class="w-3.5 h-3.5 rounded-full shrink-0 border border-white/30" style="background:${pState.color}"></span>
+                        <div class="truncate">
+                            <div class="text-xs font-bold text-slate-100 truncate">${idx + 1}. ${part.faName}</div>
+                            <div class="text-[10px] text-slate-400 font-mono truncate">${part.enName}</div>
+                        </div>
+                    </div>
+                    <button onclick="event.stopPropagation(); togglePartVisibilityById('${part.id}')" class="p-1.5 rounded-lg hover:bg-slate-700/80 text-slate-300 transition" title="نمایش / مخفی‌سازی">
+                        ${pState.visible ? `
+                            <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        ` : `
+                            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                        `}
+                    </button>
+                `;
+                listEl.appendChild(btn);
+            });
+        }
+
+        function selectPart(partId) {
+            state.selectedPartId = partId;
+            const part = ENGINE_PARTS_DATA.find(p => p.id === partId);
+            const pState = state.partsState[partId];
+
+            // Flash subtle highlight on selected part material
+            const mat = partMaterials[partId];
+            const prevEmissive = mat.emissive.getHex();
+            mat.emissive.setHex(0x0ea5e9);
+            mat.emissiveIntensity = 0.45;
+            setTimeout(() => {
+                mat.emissive.setHex(prevEmissive);
+                mat.emissiveIntensity = 0;
+            }, 260);
+
+            // Populate Left Inspector Panel
+            document.getElementById('detail-badge').textContent = part.badge;
+            document.getElementById('detail-en-name').textContent = part.enName;
+            document.getElementById('detail-fa-name').textContent = part.faName;
+            document.getElementById('spec-alloy').textContent = part.alloy;
+            document.getElementById('spec-count').textContent = part.count;
+            document.getElementById('spec-stress').textContent = part.stress;
+            document.getElementById('spec-weight').textContent = part.weight;
+            document.getElementById('detail-description').textContent = part.description;
+            document.getElementById('detail-pro-tip').textContent = part.proTip;
+
+            // Sync customization controls
+            document.getElementById('custom-color-input').value = pState.color;
+            const expPct = Math.round(pState.individualExplode * 100);
+            document.getElementById('part-explode-slider').value = expPct;
+            document.getElementById('part-explode-label').textContent = expPct + '%';
+
+            const opPct = Math.round(pState.opacity * 100);
+            document.getElementById('part-opacity-slider').value = opPct;
+            document.getElementById('part-opacity-label').textContent = opPct + '%';
+
+            document.getElementById('btn-part-vis').textContent = pState.visible ? 'مخفی کردن' : 'نمایش قطعه';
+            document.getElementById('btn-part-wire').textContent = pState.wireframe ? 'حالت توپر' : 'حالت شبکه‌ای';
+            document.getElementById('btn-part-isolate').textContent = (state.isolatedPartId === partId) ? 'خروج از ایزوله' : 'ایزوله (فقط همین)';
+
+            renderPartsList();
+        }
+
+        function applyMaterialState(partId) {
+            const pState = state.partsState[partId];
+            const mat = partMaterials[partId];
+            mat.color.set(pState.color);
+            mat.metalness = pState.metalness;
+            mat.roughness = pState.roughness;
+            mat.wireframe = pState.wireframe;
+
+            const effectiveOpacity = (partId === 'block' && state.xrayBlock) ? Math.min(pState.opacity, 0.22) : pState.opacity;
+            mat.transparent = effectiveOpacity < 0.99;
+            mat.opacity = effectiveOpacity;
+            mat.needsUpdate = true;
+
+            partMeshesMap[partId].forEach(mesh => {
+                mesh.visible = pState.visible;
+            });
+        }
+
+        function setPartColor(hexColor) {
+            const id = state.selectedPartId;
+            state.partsState[id].color = hexColor;
+            document.getElementById('custom-color-input').value = hexColor;
+            applyMaterialState(id);
+            renderPartsList();
+        }
+
+        function setPartFinish(finishType) {
+            const id = state.selectedPartId;
+            const pState = state.partsState[id];
+            if (finishType === 'chrome') {
+                pState.metalness = 0.98;
+                pState.roughness = 0.06;
+                pState.opacity = 1.0;
+            } else if (finishType === 'brushed') {
+                pState.metalness = 0.85;
+                pState.roughness = 0.28;
+                pState.opacity = 1.0;
+            } else if (finishType === 'carbon') {
+                pState.metalness = 0.35;
+                pState.roughness = 0.65;
+                pState.opacity = 1.0;
+            } else if (finishType === 'glass') {
+                pState.metalness = 0.2;
+                pState.roughness = 0.1;
+                pState.opacity = 0.3;
+            }
+            applyMaterialState(id);
+            selectPart(id);
+        }
+
+        function togglePartVisibilityById(partId) {
+            state.partsState[partId].visible = !state.partsState[partId].visible;
+            applyMaterialState(partId);
+            selectPart(state.selectedPartId);
+        }
+
+        function toggleSelectedPartVisibility() {
+            togglePartVisibilityById(state.selectedPartId);
+        }
+
+        function toggleSelectedPartWireframe() {
+            const id = state.selectedPartId;
+            state.partsState[id].wireframe = !state.partsState[id].wireframe;
+            applyMaterialState(id);
+            selectPart(id);
+        }
+
+        function toggleIsolateSelectedPart() {
+            const id = state.selectedPartId;
+            if (state.isolatedPartId === id) {
+                state.isolatedPartId = null;
+                ENGINE_PARTS_DATA.forEach(p => {
+                    state.partsState[p.id].visible = true;
+                    applyMaterialState(p.id);
+                });
+            } else {
+                state.isolatedPartId = id;
+                ENGINE_PARTS_DATA.forEach(p => {
+                    state.partsState[p.id].visible = (p.id === id);
+                    applyMaterialState(p.id);
+                });
+            }
+            selectPart(id);
+        }
+
+        function resetAllPartsVisibility() {
+            state.isolatedPartId = null;
+            ENGINE_PARTS_DATA.forEach(p => {
+                state.partsState[p.id].visible = true;
+                applyMaterialState(p.id);
+            });
+            selectPart(state.selectedPartId);
+        }
+
+        function resetSelectedPartStyle() {
+            const id = state.selectedPartId;
+            const part = ENGINE_PARTS_DATA.find(p => p.id === id);
+            state.partsState[id] = {
+                color: part.defaultColor,
+                metalness: part.metalness,
+                roughness: part.roughness,
+                opacity: 1.0,
+                visible: true,
+                wireframe: false,
+                individualExplode: 0
+            };
+            applyMaterialState(id);
+            selectPart(id);
+        }
+
+        function focusSelectedPart() {
+            const meshes = partMeshesMap[state.selectedPartId];
+            if (!meshes || meshes.length === 0) return;
+            const box = new THREE.Box3();
+            meshes.forEach(m => box.expandByObject(m));
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            controls.target.copy(center);
+        }
+
+        // ============================================================================
+        // 7. EVENT LISTENERS FOR SLIDERS, TABS & RAYCASTING (CLICK ON 3D PARTS)
+        // ============================================================================
+        document.getElementById('master-explode-slider').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            state.targetMasterExplode = val / 100;
+            document.getElementById('master-explode-val').textContent = Math.round(val) + '%';
+        });
+
+        function animateExplodeTo(percent) {
+            document.getElementById('master-explode-slider').value = percent;
+            state.targetMasterExplode = percent / 100;
+            document.getElementById('master-explode-val').textContent = percent + '%';
+        }
+
+        document.getElementById('part-explode-slider').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            state.partsState[state.selectedPartId].individualExplode = val / 100;
+            document.getElementById('part-explode-label').textContent = Math.round(val) + '%';
+        });
+
+        document.getElementById('part-opacity-slider').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            state.partsState[state.selectedPartId].opacity = val / 100;
+            document.getElementById('part-opacity-label').textContent = Math.round(val) + '%';
+            applyMaterialState(state.selectedPartId);
+        });
+
+        document.getElementById('rpm-slider').addEventListener('input', (e) => {
+            setRPM(parseInt(e.target.value, 10));
+        });
+
+        function setRPM(val) {
+            state.rpm = val;
+            document.getElementById('rpm-slider').value = val;
+            document.getElementById('rpm-val-label').textContent = val + ' RPM';
+        }
+
+        document.getElementById('bank-angle-slider').addEventListener('input', (e) => {
+            state.bankAngleDeg = parseInt(e.target.value, 10);
+            document.getElementById('angle-val-label').textContent = state.bankAngleDeg + '°';
+        });
+
+        document.getElementById('stroke-slider').addEventListener('input', (e) => {
+            const pct = parseInt(e.target.value, 10);
+            state.strokeScale = pct / 100;
+            document.getElementById('stroke-val-label').textContent = pct + '%';
+        });
+
+        document.getElementById('toggle-combustion').addEventListener('change', (e) => {
+            state.showCombustion = e.target.checked;
+        });
+
+        document.getElementById('toggle-xray').addEventListener('change', (e) => {
+            state.xrayBlock = e.target.checked;
+            applyMaterialState('block');
+        });
+
+        document.getElementById('toggle-thermal').addEventListener('change', (e) => {
+            state.thermalExhaust = e.target.checked;
+        });
+
+        document.getElementById('toggle-autorotate').addEventListener('change', (e) => {
+            controls.autoRotate = e.target.checked;
+            controls.autoRotateSpeed = 1.8;
+        });
+
+        function switchRightTab(tab) {
+            const isParts = tab === 'parts';
+            document.getElementById('tab-parts-content').classList.toggle('hidden', !isParts);
+            document.getElementById('tab-sim-content').classList.toggle('hidden', isParts);
+            document.getElementById('tab-sim-content').classList.toggle('flex', !isParts);
+
+            document.getElementById('tab-parts-btn').className = isParts
+                ? 'py-1.5 text-xs font-bold rounded-lg bg-sky-500 text-slate-950 shadow transition'
+                : 'py-1.5 text-xs font-bold rounded-lg text-slate-300 hover:text-white transition';
+
+            document.getElementById('tab-sim-btn').className = !isParts
+                ? 'py-1.5 text-xs font-bold rounded-lg bg-sky-500 text-slate-950 shadow transition'
+                : 'py-1.5 text-xs font-bold rounded-lg text-slate-300 hover:text-white transition';
+        }
+
+        function setCameraPreset(preset) {
+            controls.target.set(0, 0.8, 0);
+            if (preset === 'iso') camera.position.set(11.5, 7.2, 12.5);
+            if (preset === 'front') camera.position.set(0, 1.8, 15.5);
+            if (preset === 'top') camera.position.set(0, 17.5, 0.01);
+            if (preset === 'side') camera.position.set(16.5, 2.0, 0);
+        }
+
+        // Build 16-Cylinder Firing Order Matrix UI cells
+        const firingGridEl = document.getElementById('firing-grid');
+        const firingCells = [];
+        for (let i = 0; i < 16; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'py-1 rounded bg-slate-800 text-[10px] font-mono font-bold text-slate-300 transition-colors';
+            cell.textContent = 'C' + (i + 1);
+            firingGridEl.appendChild(cell);
+            firingCells.push(cell);
+        }
+
+        // 3D Raycasting for interactive part selection & hover tooltip
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        const tooltipEl = document.getElementById('part-tooltip');
+        let pointerDownPos = { x: 0, y: 0 };
+
+        function getAllInteractiveMeshes() {
+            const arr = [];
+            Object.values(partMeshesMap).forEach(list => {
+                list.forEach(m => { if (m.visible) arr.push(m); });
+            });
+            return arr;
+        }
+
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            pointerDownPos = { x: e.clientX, y: e.clientY };
+        });
+
+        renderer.domElement.addEventListener('pointerup', (e) => {
+            const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+            if (dist > 6) return; // Ignore drag movements
+
+            pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+            pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+
+            const intersects = raycaster.intersectObjects(getAllInteractiveMeshes(), false);
+            if (intersects.length > 0) {
+                const hitPartId = intersects[0].object.userData.partId;
+                if (hitPartId) selectPart(hitPartId);
+            }
+        });
+
+        renderer.domElement.addEventListener('pointermove', (e) => {
+            pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+            pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+
+            const intersects = raycaster.intersectObjects(getAllInteractiveMeshes(), false);
+            if (intersects.length > 0 && intersects[0].object.userData.partId) {
+                const part = ENGINE_PARTS_DATA.find(p => p.id === intersects[0].object.userData.partId);
+                if (part) {
+                    tooltipEl.textContent = part.faName;
+                    tooltipEl.style.left = (e.clientX + 14) + 'px';
+                    tooltipEl.style.top = (e.clientY + 14) + 'px';
+                    tooltipEl.style.opacity = '1';
+                    document.body.style.cursor = 'pointer';
+                    return;
+                }
+            }
+            tooltipEl.style.opacity = '0';
+            document.body.style.cursor = 'default';
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ============================================================================
+        // 8. TELEMETRY & MAIN RENDER LOOP
+        // ============================================================================
+        let lastTime = performance.now();
+        let uiFrameCounter = 0;
+
+        function updateLiveTelemetry() {
+            const rpm = state.rpm;
+            // Realistic W16 1500 HP curve approximation
+            const hp = rpm === 0 ? 0 : Math.round(Math.min(1500, (rpm / 8000) * 1500 * (0.65 + 0.35 * Math.sin((rpm / 8500) * Math.PI * 0.8))));
+            const pistonSpeed = ((rpm * 0.095 * state.strokeScale) / 30).toFixed(1);
+            const exhaustTemp = rpm === 0 ? 25 : Math.round(280 + (rpm / 8500) * 680);
+
+            document.getElementById('tel-rpm').textContent = rpm;
+            document.getElementById('tel-hp').textContent = hp + ' HP';
+            document.getElementById('tel-piston').textContent = pistonSpeed + ' m/s';
+            document.getElementById('tel-temp').textContent = exhaustTemp + ' °C';
+
+            // Update 16-Cylinder 4-stroke color matrix
+            for (let i = 0; i < 16; i++) {
+                const cycleAngle = ((state.crankAngle + CYLINDER_PHASE_OFFSETS[i]) % (Math.PI * 4) + Math.PI * 4) % (Math.PI * 4);
+                const cell = firingCells[i];
+                if (cycleAngle < Math.PI) {
+                    cell.className = 'py-1 rounded bg-sky-500/30 border border-sky-400/50 text-[10px] font-mono font-bold text-sky-300';
+                } else if (cycleAngle < Math.PI * 2) {
+                    cell.className = 'py-1 rounded bg-amber-500/30 border border-amber-400/50 text-[10px] font-mono font-bold text-amber-300';
+                } else if (cycleAngle < Math.PI * 3) {
+                    cell.className = 'py-1 rounded bg-rose-500 border border-rose-300 text-[10px] font-mono font-bold text-white shadow shadow-rose-500/50';
+                } else {
+                    cell.className = 'py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono font-bold text-slate-400';
+                }
+            }
+        }
+
+        function animate(now) {
+            requestAnimationFrame(animate);
+            const dt = Math.min(0.05, (now - lastTime) / 1000);
+            lastTime = now;
+
+            updateEngineKinematics(dt);
+            controls.update();
+            renderer.render(scene, camera);
+
+            uiFrameCounter++;
+            if (uiFrameCounter % 4 === 0) {
+                updateLiveTelemetry();
+            }
+        }
+
+        // Initialize UI & Start Loop
+        selectPart('crankshaft');
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
